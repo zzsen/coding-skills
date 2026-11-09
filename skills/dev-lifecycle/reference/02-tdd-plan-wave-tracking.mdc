@@ -1,0 +1,102 @@
+---
+description: TDD 开发流程纪律（RED-GREEN-REFACTOR）
+alwaysApply: true
+---
+
+# TDD 计划 Wave 汇总跟踪
+
+> 配合 `docs/superpowers/plans/` 与 **`writing-plans`** / **`executing-plans`** Skill 使用（**禁止手写 TDD 替代**，见 [mandatory-tooling.md](mandatory-tooling.md)）。
+
+---
+
+## 一、适用场景
+
+- 编写 `docs/superpowers/plans/YYYY-MM-DD-<feature>-tdd.md`
+- 按 Wave 分批 TDD 落地（Red → Green → Refactor）
+
+
+### 三阶段纪律
+| 阶段 | 做什么 | 约束 |
+|------|--------|------|
+| RED | 只写测试 | 运行测试用例确认失败 |
+| GREEN | 写最小实现 | 只实现测试中要求的行为 |
+| REFACTOR | 优化代码 | 每次修改后运行测试用例确认仍通过 |
+
+### 新功能 / Bug 修复流程
+
+1. 阅读 `openspec/changes/*/tasks.md` 中当前 task（如有）
+2. 编写失败测试（RED）
+3. 手动运行测试用例，确认失败信息精确
+4. 编写最小实现使测试通过（GREEN）
+5. 重构并验证（REFACTOR）
+
+### 禁止事项
+
+- 禁止跳过 RED 直接写实现
+- 禁止在未运行 `npm test` 的情况下声称「已完成」
+- GREEN 阶段禁止添加测试中未要求的功能
+
+---
+
+## 二、必须含「Wave 汇总」章节
+
+位置：「三、实施顺序（TDD 波浪）」之后、第一个「四、Wave N」之前。
+
+```markdown
+## Wave 汇总
+
+> 完成 Wave 后更新 **完成情况**；开始时标 `🔄 进行中`。
+
+| Wave | 基本信息 | 完成情况 |
+|------|----------|----------|
+| Wave 1 | <范围 + tasks 编号> | ⬜ 未开始 |
+| Wave 2 | <...> | ⬜ 未开始 |
+```
+
+### 列定义
+
+| 列 | 要求 |
+|----|------|
+| Wave | `Wave 1`、`Wave 2`… 与正文标题一致 |
+| 基本信息 | 目标、模块、对应 tasks（如 `1.1–1.3`） |
+| 完成情况 | 仅允许：`⬜ 未开始` / `🔄 进行中` / `✅ 已完成` |
+
+行数 **必须** 与实施顺序中 Wave 数量一致，不得遗漏或合并。
+
+---
+
+## 三、Wave 完成后义务
+
+完成 Wave 时**按序**更新（Phase 3 / `executing-plans` 每 Wave 结束时执行）：
+
+1. 打开 `docs/superpowers/plans/*-tdd.md`
+2. **TDD 计划 Task 状态**：将该 Wave 覆盖范围内正文所有 Step 勾选框 `- [ ]` → `- [x]`（含本 Wave 各 Task 下全部 Step；进行中 Wave 的 Step 可在单 Step 完成时即时勾选）
+3. **Wave 汇总**：该 Wave 完成情况 → `✅ 已完成`（Wave 开始时标 `🔄 进行中`）
+4. 同步 `dev-plan/.../2.plan.md` Wave 镜像表
+5. 勾选 `openspec/changes/*/tasks.md` 中本 Wave 覆盖的原子任务
+
+**禁止**：代码已合并但汇总表仍 `⬜ 未开始`；Wave 已 `✅` 但 TDD 计划内对应 Step 仍为 `- [ ]`。
+
+---
+
+## 四、与 OpenSpec tasks 协同
+
+| 产物 | 维度 |
+|------|------|
+| TDD 计划 Step 勾选框 | 实施步骤（`- [ ]` / `- [x]`，Wave 内逐步或 Wave 完成时批量更新） |
+| `tasks.md` | 功能维度（原子任务勾选） |
+| Wave 汇总 | 实施节奏（批次验收） |
+
+完成 Wave：**先**勾选 TDD 计划 Step **与** `tasks.md` **→ 再**更新 Wave 汇总表 **→ 最后**同步 `2.plan.md`。
+
+---
+
+## 五、示例
+
+```markdown
+| Wave | 基本信息 | 完成情况 |
+|------|----------|----------|
+| Wave 1 | 配置类型 + ResolveActiveModel（tasks 1.1–1.3） | ✅ 已完成 |
+| Wave 2 | Loader 校验（tasks 2.1–2.4） | 🔄 进行中 |
+| Wave 7 | 全量 build/test/lint（tasks 6.x） | ⬜ 未开始 |
+```

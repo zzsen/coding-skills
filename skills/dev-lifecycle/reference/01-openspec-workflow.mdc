@@ -1,0 +1,104 @@
+---
+description: OpenSpec /opsx 工作流强制执行（explore → propose → apply → archive）
+alwaysApply: true
+---
+
+# OpenSpec /opsx 工作流规范
+
+> 非琐碎改动必须走 OpenSpec。**必须**使用官方 command 或 Skill；详见 [mandatory-tooling.md](mandatory-tooling.md)。
+
+---
+
+## 一、四阶段（强制顺序 + 强制工具）
+
+```
+explore → propose → apply → archive
+ 调研      出方案     编码落地    归档复盘
+```
+
+| 阶段 | 命令 | Skill | 禁止 |
+|------|------|-------|------|
+| 探索 | **`/opsx:explore`** | **`openspec-explore`** | 纯会话 Explore、brainstorming、手写 explore 产物 |
+| 提案 | **`/opsx:propose`** | **`openspec-propose`** | 手写 `openspec/changes/` |
+| 实施 | **`/opsx:apply`** | **`openspec-apply-change`** | 不跑 apply 直接改代码勾 tasks |
+| 归档 | **`/opsx:archive`** | **`openspec-archive-change`** | 仅 Shell 移动目录 |
+
+命令文件：`<agent-commands-dir>/opsx-*.md`（`openspec init --tools <agent-slug>` 生成）。Skills：`<agent-skills-dir>/openspec-*/SKILL.md`。
+
+---
+
+## 二、是否走 opsx
+
+**必须走**（命中任一）：
+
+- 新增模块/接口/页面/功能、重构、跨 3+ 文件改动、涉及扩展方向
+
+**可跳过**（轻量）：
+
+- 单文件 typo/注释、单测补充（不改被测代码）、文档微调、lint/fmt、单一 bug fix（< 20 行）
+
+> 不确定 → **走 opsx**。
+
+---
+
+## 三、各阶段产物
+
+### explore
+
+- **新功能 + dev-lifecycle**：权威见 [phase1.md](../phases/phase1.md) 文首 **「Explore 铁律」**；调研结束后 **对话正文必须先写 §2.1（1）–（6）六节全文**，**然后** `AskUserQuestion`；自检见同文件 §2.2
+- **一律禁止**：正文仅「下面给出 §2.1」→ 直接 `AskUserQuestion`；方案详情只写在 AskUserQuestion 选项里
+- **openspec-explore**「无固定步骤」**不覆盖** dev-lifecycle 上述交付要求
+- **已有功能变更**：可直接 propose
+- 遵守 [exploration.md](../phases/exploration.md)；**禁止**未调用 OpenSpec 工具手写替代
+
+### propose
+
+- **必须** `/opsx:propose` 或 `openspec-propose`
+- 位置：`openspec/changes/<change-name>/`
+- 必含：`proposal.md`、`design.md`、`tasks.md`（≤半天/项）、`specs/`（如需）
+
+### apply
+
+- **必须** `/opsx:apply` 或 `openspec-apply-change`
+- **dev-lifecycle Phase 3**：**禁止**入口直接 apply；**须先** `executing-plans` 完成全部 Wave ✅，**再** apply 处理 `tasks.md` **剩余**项（见 [phase3.md](../phases/phase3.md) §二→§三）
+- 按 `tasks.md` 顺序勾选；禁止扩大范围；新需求回 propose
+
+### archive
+
+- **必须** `/opsx:archive` 或 `openspec-archive-change`
+- 验收 ✅ 后移至 `openspec/archive/<date>-<change-name>/`
+- 合入 `openspec/specs/`；更新 README/CHANGELOG
+
+---
+
+## 四、与 Rules 协同
+
+| 关注点 | 产物 |
+|--------|------|
+| 该不该做 | `proposal.md` |
+| 怎么做 | `design.md` |
+| 具体步骤 | `tasks.md` |
+
+---
+
+## 五、启动前自检
+
+1. 新功能还是已有功能变更？新功能 → **先 `/opsx:explore`** + 用户确认
+2. 核心约束是否明确？否 → 补 explore
+3. 有无既有实现可复用？按 exploration 白名单探索，**禁止** `Glob **/*`
+
+---
+
+## 六、dev-lifecycle 优先级（**覆盖 brainstorming**）
+
+命中 dev-lifecycle 时，**禁止 Read / 调用 Superpowers `brainstorming` Skill**。
+
+| 禁止 | 正确做法 |
+|------|----------|
+| `brainstorming` | **`/opsx:explore`** → AskUserQuestion → **`/opsx:propose`** |
+| 未过 Phase 1 即 `writing-plans` | Phase 1 OpenSpec 工具链 + 用户确认 → Phase 2 **`writing-plans` Skill** |
+| Phase 3 未读 `executing-plans` | **`executing-plans` Skill** 按 Wave TDD 实施（阶段 A） |
+| Phase 3 入口直接 `apply` | **先** executing-plans → 全部 Wave ✅ → **再** `/opsx:apply` 收尾剩余 tasks（阶段 B） |
+| 首个 Tool Call 即 `Glob **/*` | Shell preflight + 门禁报告 |
+
+**制定开发计划** = Phase 1 OpenSpec + 确认 + Phase 2 **`writing-plans`**，不是只写 TDD。
