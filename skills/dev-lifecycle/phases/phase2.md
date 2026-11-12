@@ -94,6 +94,21 @@ bash <skill_root>/scripts/gate-phase2.sh --plan-dir <plan-dir> --change-name <ch
 
 ---
 
-## 六、质量门禁
+## 六、worktree 隔离（进入 Phase 3 前，git 必做）
+
+> **非 git 项目跳过本节**（降级为单工作树，按 change 目录隔离）。
+
+用户「✅ 确认计划，开始开发」后、进入 Phase 3 前：
+
+1. 把 openspec（changes / specs）+ TDD 计划 **commit 到当前（源）分支**（worktree 是干净 checkout，不 commit 带不过去）。
+2. **AskUserQuestion 只确认源分支**（默认当前分支）；分支名 `{feature|fix}-<change-name>` 自动，**无需用户确认**。
+3. 运行 `worktree-create --change-name <name> --kind feature|fix --base-branch <源分支>` → 创建 `.worktrees/<branch>`、登记 `.dev-lifecycle/worktrees.tsv`、自动把 `.worktrees/` 写进 `.gitignore`。
+4. 记录 worktree 绝对路径 `<git-root>/.worktrees/<branch>`，**Phase 3~6 源码/测试/文档改动只在该路径内进行**。
+
+**铁律**：主工作树**禁止** checkout/switch 到 change 分支；**禁止** `git checkout -b` / `git switch -c` 为 change 建分支——一律走 `worktree-create`。
+
+---
+
+## 七、质量门禁
 
 → [checklist.md](../checklist.md) § Phase 2
