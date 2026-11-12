@@ -22,6 +22,7 @@
 | **preflight** | `preflight.ps1` / `preflight.sh` | 前置（**首个 Shell**） | `check-env` → `restore-rules` → `ensure-openspec` → `check-env`；**内置 7 天门禁缓存**：`.preflight-last-run` 未超期则输出 `gate-cache: valid` 直接跳过 | 可选 `--json` / `-Json`、`--force` / `-Force`、`--max-age-days=N` | 分段检查输出；**仅门禁通过时**刷新 `.preflight-last-run` 时间戳 |
 | **check-env** | `check-env.ps1` / `check-env.sh` | 前置步骤 1 | 环境定点检查 | 可选 `--json` | 路径（含 `openspec/`）、`openspec-*`、`superpowers_*`、`environment-ready` 等 |
 | **_agent-lib**（库） | `_agent-lib.ps1` / `.sh` | 被其他脚本 source | agent 探测、skills 目录 / openspec slug / 规则载体 / 项目级状态路径解析 | — | 函数库，不单独执行 |
+| **_worktree-lib**（库） | `_worktree-lib.ps1` / `.sh` | 被 worktree-* 脚本 source | worktree 根目录 / 登记表路径 / 分支与路径命名 / 仓库定位 | — | 函数库，不单独执行 |
 | **check-superpowers** | `check-superpowers.ps1` / `.sh` | 前置 / 单独 | 按 agent 查找 `writing-plans` / `executing-plans` | `--json`、`--agent=<id>` | `agent`、`superpowers-ready`、两个 Skill 路径 |
 | **enable-superpowers** | `enable-superpowers.ps1` / `.sh` | 前置 AskUserQuestion #2 | 打印 / 执行 `npx skills add obra/superpowers` | `--run`、`--agent=<id>`、`--project` | `RESULT: ALREADY_READY\|PRINTED\|INSTALLED\|ERROR` |
 | **restore-rules** | `restore-rules.ps1` / `restore-rules.sh` | 前置步骤 0 | 复制缺失 Rules | 可选 `--dry-run` | `Rules restored` / `all present` |
@@ -41,6 +42,9 @@
 | **check-wave-sync** | `check-wave-sync.ps1` / `.sh` | Phase 3 / 7 | Wave 表一致性 | `--plan-dir`、可选 `--tdd-path` | `WAVE_SYNC: pass/block` |
 | **check-tasks-sync** | `check-tasks-sync.ps1` / `.sh` | Phase 3 收尾 | tasks 勾选状态 | `--change-name`、可选 `--plan-dir` | `TASKS_SYNC: pass/block` |
 | **update-proposal-links** | `update-proposal-links.ps1` / `.sh` | Phase 7 归档后 | 更新 archive 链接 | `--plan-dir`、`--change-name`、`--archive-date` | `LINKS_UPDATED: N` |
+| **worktree-create** | `worktree-create.ps1` / `.sh` | Phase 2→3 前 | 创建隔离 worktree（`git worktree add -b`）并登记；自动把 `.worktrees/` 写入 `.gitignore` | `--change-name`、`--kind feature\|fix`、`--base-branch`（默认当前分支） | `WORKTREE_CREATED` 行 + `RESULT: OK` |
+| **worktree-status** | `worktree-status.ps1` / `.sh` | 场景判定 / resume | 汇总 `git worktree list` 与登记表，定位未完成 change | `--json` | 每 worktree 一行 / JSON |
+| **worktree-merge-back** | `worktree-merge-back.ps1` / `.sh` | Phase 7 后 | rebase → merge 回源分支 → worktree remove → 更新登记表 | `--change-name`、`--kind`、`--base-branch`、`--keep-branch`、`--ff`、`--no-rebase`、`--dry-run` | 每步 `STEP` / `RESULT: OK` |
 
 ## 常用命令
 
@@ -67,6 +71,11 @@ bash <skill_root>/scripts/run-lint.sh dev-plan/.../
 
 - **preflight** 为 SKILL §1.1 步骤 1 的唯一首调用：先查 `.dev-lifecycle/.preflight-last-run`（仅门禁通过时写入），距今 ≤ 7 天（`--max-age-days` / `DEVLC_GATE_MAX_AGE_DAYS` 可覆盖）→ `gate-cache: valid` 直接退出，本会话跳过全量门禁；超期 / 缺失 / 不可解析 → 自动全量执行，通过后刷新时间戳（并按 §2.1 重新校验 project-config）。`--force` 或删除该标记可强制重跑。
 - **preflight** 亦可替换为单独跑 `check-env` + `restore-rules` + `ensure-openspec`（但无缓存、不刷新通过时间戳，不推荐）。
+- **worktree 隔离**：`worktree-create` / `worktree-status` / `worktree-merge-back` 三件套配合使用。
+  - 隔离点：Phase 2 确认后、Phase 3 前；源分支默认当前分支（创建前须由 Agent 经 AskUserQuestion 与用户确认源分支）。
+  - 分支名 `{feature|fix}-<change-name>`，worktree 落在 `.worktrees/<branch>`；`worktree-create` 会自动把 `.worktrees/` 追加进 `.gitignore`。
+  - 交付点：Phase 7 完成 archive + 验收后，`worktree-merge-back` 依次 rebase（到源分支最新）→ merge（默认 `--no-ff`）→ worktree remove → 删分支 → 登记表 `status=merged`。**冲突一律停下交用户，不自动 resolve。**
+  - 登记表：`.dev-lifecycle/worktrees.tsv`（TSV，8 列）；resume 时用 `worktree-status` 定位「未完成的 change 在哪个 worktree」。
 - **writing-plans**、**AskUserQuestion 确认**、**/opsx:*** 命令不可由脚本替代。
 - `run-lint` 当前硬编码 `backend/` + `frontend/`；多语言扩展见 [phase5.md](../phases/phase5.md)。
 

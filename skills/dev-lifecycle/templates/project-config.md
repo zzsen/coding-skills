@@ -39,6 +39,7 @@
 ├── docs/            # 项目文档
 │   └── superpowers/plans/  # Superpowers TDD 计划
 ├── dev-plan/        # 开发生命周期产物索引
+├── .worktrees/      # worktree 隔离目录（并行开发，自动 gitignore）
 └── ...
 \`\`\`
 

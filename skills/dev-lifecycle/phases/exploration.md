@@ -23,6 +23,7 @@
 | `.turbo/`、`.next/`、`.nuxt/` | 前端缓存/产物 |
 | `coverage/` | 覆盖率产物 |
 | `dev-plan/` | 生命周期产物 |
+| `.worktrees/` | worktree 隔离目录（并行开发副本，勿扫） |
 | `.cursor/` | Agent 配置（读 Skill 用定点 `Read`） |
 
 等效：`**/node_modules/**`、`**/.git/**` 等。工具不支持 exclude 时，**不得**用宽 glob，改白名单或定点 `Read`。
@@ -44,7 +45,7 @@
 **Shell 排除示例**：
 
 ```powershell
-$ignore = 'node_modules|\.git|vendor|[/\\]\.venv[/\\]|[/\\]venv[/\\]|dist|build|\.vscode|dev-plan|\.cursor'
+$ignore = 'node_modules|\.git|vendor|[/\\]\.venv[/\\]|[/\\]venv[/\\]|dist|build|\.vscode|dev-plan|\.worktrees|\.cursor'
 Get-ChildItem -Path "d:\repo\frontend\src" -Recurse -File |
   Where-Object { $_.FullName -notmatch $ignore }
 ```
