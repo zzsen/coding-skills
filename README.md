@@ -5,7 +5,7 @@
 
 | Skill | 作用 |
 |-------|------|
-| [dev-lifecycle](skills/dev-lifecycle/) | 端到端开发生命周期管理：OpenSpec 方案 → TDD 计划 → Wave 实施 → 测试 / Lint / 文档 → 验收归档，共 7 个 Phase，带入口环境门禁 |
+| [dev-lifecycle](skills/dev-lifecycle/) | 端到端开发生命周期管理：OpenSpec 方案 → TDD 计划 → Wave 实施 → 测试 / Lint / 文档 → 验收归档，共 7 个 Phase，带入口环境门禁，支持 worktree 多分支并行隔离 |
 | [git-commit-planner](skills/git-commit-planner/) | 扫描工作区内所有 Git 仓库，按功能模块与时间线分析改动，生成结构化多提交点计划，再逐步安全执行 `git add` / `git commit` |
 
 两个 Skill 相互独立，可单独安装。
@@ -87,8 +87,19 @@ DEVLC_AGENT=codex bash <skill_root>/scripts/preflight.sh
 | OpenSpec 权威产物 | `openspec/changes/<name>/` |
 | TDD 计划 | `docs/superpowers/plans/*-tdd.md` |
 | 提交计划 | `commit-plan/<YYYYMM>/` |
+| worktree 隔离工作树（可选） | `.worktrees/<feature\|fix>-<change>/` |
+| worktree 登记表 | `.dev-lifecycle/worktrees.tsv` |
 
 > 配置与标记放在项目级 `.dev-lifecycle/` 而非 Skill 目录内 —— 全局安装时 Skill 目录为多项目共享。
+
+## worktree 并行开发（dev-lifecycle 可选）
+
+多分支并行开发时，每个 change 对应一个分支 + 一个独立 worktree，互不踩源码：
+
+- **隔离点**：Phase 2 确认后、Phase 3 前；源分支默认当前分支（由 Agent 与用户确认），分支名 `{feature|fix}-<change-name>` 由需求分析自动得出。
+- **工作树**：落在 `.worktrees/<branch>/`；dev-plan 各阶段报告仍在主工作树跟进，源码 / 测试 / openspec 随 worktree 走。
+- **合并点**：Phase 7 验收通过后 `worktree-merge-back`（rebase → merge --no-ff → worktree remove → 删分支）；**冲突停下交用户，绝不自动 resolve**。
+- **降级**：非 git 项目自动降级为单工作树内按 change 目录隔离（即无 worktree 时的现状）。
 
 ## 跨 IDE 差异
 
@@ -141,6 +152,7 @@ coding-skills/
 | `init-plan-dir`、`timestamp`、`next-task-id` | dev-plan 目录与时间戳（**时间必须由脚本取，禁止编造**） |
 | `run-tests`、`run-lint` | Phase 4 / 5 的测试与 Lint 执行与结果解析 |
 | `gate-phase2`、`gate-phase7` | 阶段硬门禁的文件级校验 |
+| `worktree-create`、`worktree-status`、`worktree-merge-back` | worktree 并行开发：创建隔离 / 定位续做 / 合并回源分支 |
 
 ## License
 
