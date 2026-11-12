@@ -1,6 +1,6 @@
 ---
 name: dev-lifecycle
-description: 端到端开发生命周期管理：把需求从 OpenSpec 方案推进到验收归档，强制走 OpenSpec（explore/propose/apply/archive）与 Superpowers（writing-plans/executing-plans）官方工具链，产出 dev-plan 七阶段产物。当用户要求「制定方案 / 制定开发计划 / 做设计 / 开发新功能 / 按流程开发」时使用。执行铁律：首个工具调用仅 preflight；未过环境门禁禁止探索仓库与写产物；禁用 brainstorming；Explore 须先在对话正文输出 §2.1 六节再提问。
+description: 端到端开发生命周期管理：把需求从 OpenSpec 方案推进到验收归档，强制走 OpenSpec（explore/propose/apply/archive）与 Superpowers（writing-plans/executing-plans）官方工具链，产出 dev-plan 七阶段产物。当用户要求「制定方案 / 制定开发计划 / 做设计 / 开发新功能 / 按流程开发」时使用。执行铁律：首个工具调用仅 preflight（内置 7 天缓存：.preflight-last-run 未超期则自动跳过门禁，超期才全量执行并刷新时间戳、重新校验 project-config）；未过环境门禁禁止探索仓库与写产物；禁用 brainstorming；Explore 须先在对话正文输出 §2.1 六节再提问。
 ---
 
 # 全流程开发生命周期管理
@@ -51,7 +51,7 @@ description: 端到端开发生命周期管理：把需求从 OpenSpec 方案推
 | 禁止 | 正确替代 |
 |------|----------|
 | **Read / 调用 `brainstorming` Skill** | **`/opsx:explore`** 或 **`openspec-explore`** → AskUserQuestion → **`/opsx:propose`** |
-| 未过门禁即探索仓库「了解项目」 | 首个 Tool Call：**仅** `preflight.ps1` |
+| 未过门禁即探索仓库「了解项目」 | 首个 Tool Call：**仅** `preflight`（内置 7 天缓存，未超期自动跳过） |
 | 把「制定开发计划」当成 brainstorming | Phase 1 OpenSpec 工具链 → Phase 2 **`writing-plans`** |
 | 环境 ❌ 时继续方案/计划讨论 | **停止** + 仅环境 AskUserQuestion |
 | 手写 openspec / TDD 替代上述工具 | 补环境后调用对应 command/Skill |
@@ -103,9 +103,9 @@ description: 端到端开发生命周期管理：把需求从 OpenSpec 方案推
 
 | 步 | 动作 | 完成标志 |
 |:--:|------|----------|
-| 1 | **一次** `Shell`：执行 preflight（**禁止** `cd &&` 拼接） | `environment-ready: True`；或明确各项 True/False |
+| 1 | **一次** `Shell`：执行 preflight（**禁止** `cd &&` 拼接）。preflight **内置门禁缓存**：`.preflight-last-run` 距今 ≤ 7 天 → 输出 `gate-cache: valid` 并直接退出（跳过全量门禁）；超期 / 缺失 / 不可解析 → 自动继续全量执行 | 缓存：`gate-cache: valid` + `environment-ready: True（缓存）`；全量：`environment-ready: True` 或明确各项 True/False |
 | 2 | 连续 `Read`：`preparation.md` → `00-pre-flight-check-report.md` | 两文件已读；`exploration.md` **门禁「可以」后再读** |
-| 3 | **首个回复**输出门禁报告 | §1 引用步骤 1 输出（**禁止猜测** ✅/❌） |
+| 3 | **首个回复**输出门禁报告 | §1 引用步骤 1 输出（缓存命中标注「缓存命中 + 上次通过时间」；**禁止猜测** ✅/❌） |
 
 **preflight 唯一合法调用**（项目根；`<skill_root>` = 本 SKILL.md 所在目录）
 
@@ -117,9 +117,15 @@ bash <skill_root>/scripts/preflight.sh
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<skill_root>\scripts\preflight.ps1"
 ```
 
+**门禁时间戳缓存规则（preflight 内置）**
+
+- 缓存依据：`.dev-lifecycle/.preflight-last-run`，由 **preflight 仅在门禁通过（`environment-ready: True`）时**写入的最后通过时间（首行可读时间 + 次行 epoch）。**存在且未超期即代表门禁通过**；未通过不刷新，下次会话自然全量重跑。
+- `gate-cache: valid`（距今 ≤ 7 天）→ **跳过全量门禁**，门禁报告标注「缓存命中 + 上次通过时间」。
+- `missing`（含上次未通过）/ `stale`（超期）/ `malformed` → preflight **自动继续全量执行**；通过后刷新时间戳，并按 §2.1 重新校验/更新 project-config。
+- 有效期默认 **7 天**：`--max-age-days=N`（PowerShell：`-MaxAgeDays N`）或环境变量 `DEVLC_GATE_MAX_AGE_DAYS` 覆盖；`--force`（PS：`-Force`）或**删除标记文件**可强制全量重跑。
 - preflight 首行输出 `agent = <claude-code|cursor|codex>`，门禁报告须原样引用。
 - 自动探测不准时加 `--agent=<id>`（PowerShell：`-Agent <id>`），或设环境变量 `DEVLC_AGENT`。
-- 步骤 1 内含 **规则恢复**（仅 Cursor 实际写文件，其余 agent 仅提示；见 §1.4）。
+- preflight 内含 **规则恢复**（仅 Cursor 实际写文件，其余 agent 仅提示；见 §1.4；缓存命中跳过时本周内不重复恢复）。
 
 **环境未就绪时**（§1 任一项 ❌ 且未补全）
 
@@ -389,7 +395,7 @@ bash <skill_root>/scripts/next-task-id.sh
 **新功能逐步清单**
 
 ```
-1. §1.1 首个回合：Shell preflight → Read preparation + 报告模板 → 输出门禁报告
+1. §1.1 首个回合：Shell preflight（内置 7 天缓存：valid 自动跳过，否则全量执行并刷新时间戳）→ Read preparation + 报告模板 → 输出门禁报告
 2. 环境 ❌ → 仅环境 AskUserQuestion（#1a/#1b/#2），补全后重跑 preflight；停止
 3. 门禁「可以」→ Read exploration.md → project-config 有效化
 4. 创建计划目录（含 lint-results/）
@@ -421,7 +427,7 @@ bash <skill_root>/scripts/next-task-id.sh
 
 | 阶段 | 脚本 |
 |------|------|
-| 前置 | `preflight` / `check-env` / `check-superpowers` / `enable-superpowers` / `restore-rules` / `ensure-openspec` |
+| 前置 | `preflight`（含 7 天门禁缓存）/ `check-env` / `check-superpowers` / `enable-superpowers` / `restore-rules` / `ensure-openspec` |
 | Phase 1 前 | `init-plan-dir`、`validate-project-config`、`safe-list-files` |
 | Phase 2 前 | `gate-phase2` |
 | Phase 3 | `check-wave-sync`、`check-tasks-sync` |

@@ -8,18 +8,20 @@
 ## 一、执行顺序（固定，Shell 优先）
 
 ```
-步骤 1  Shell preflight（本会话第一个工具调用）
+步骤 1  Shell preflight（本会话第一个工具调用，内置门禁缓存）
+    → gate-cache: valid（.preflight-last-run 距今 ≤ 7 天）→ preflight 直接退出，跳过全量门禁
+    → missing / stale / malformed → preflight 自动继续全量执行（通过则刷新时间戳）→ §2.1 重新校验 project-config
     → 步骤 2  Read preparation.md + 00-pre-flight-check-report.md
-    → 步骤 3  首个回复输出门禁报告（§1 引用 Shell 输出）
+    → 步骤 3  首个回复输出门禁报告（§1 引用 preflight 输出；缓存命中标注上次通过时间）
     → 环境 ❌：仅环境 AskUserQuestion（#1a / #1b / #2）→ 停止，禁止 Phase
     → 环境 ✅：Read exploration.md → 进入 §二场景判定 / Phase 1
 ```
 
 | 步 | 名称 | 完成标志 |
 |----|------|----------|
-| **1** | Shell preflight | `openspec-cli-installed`、`openspec-list-ok`、`openspec-ready`、路径 True/False（含 `openspec/`）；缺 `openspec/` 时 ensure-openspec 已尝试 init |
+| **1** | Shell preflight | 缓存命中：`gate-cache: valid` + `environment-ready: True（缓存）`；全量：`openspec-cli-installed`、`openspec-list-ok`、`openspec-ready`、路径 True/False（含 `openspec/`）；缺 `openspec/` 时 ensure-openspec 已尝试 init |
 | **2** | Read 规则与报告模板 | preparation + 00-pre-flight 已读 |
-| **3** | 门禁报告 | 首个回复已输出，§1 非猜测 |
+| **3** | 门禁报告 | 首个回复已输出，§1 非猜测（缓存命中须标注「缓存命中」及上次通过时间） |
 | **4** | 环境 AskUserQuestion（若有 ❌） | 仅 #1a → #1b → #2，**不得**混入 Phase 提问 |
 | **5** | exploration.md | **仅**门禁「可以」后读取 |
 
@@ -41,11 +43,11 @@
 
 ---
 
-## 三、步骤 1：环境定点检查（首个 Shell）
+## 三、步骤 1：环境定点检查（首个 Shell，preflight 内置门禁缓存）
 
-> §1 环境检查表的 ✅/❌ **必须**来自脚本输出，**禁止凭猜测填写**。
+> §1 环境检查表的 ✅/❌ **必须**来自脚本输出（preflight）或其缓存标记（`.dev-lifecycle/.preflight-last-run`），**禁止凭猜测填写**。
 
-在项目根目录执行（**推荐 preflight**，含 Rules 恢复）：
+在项目根目录执行（**推荐 preflight**，含 Rules 恢复 + 7 天门禁缓存）：
 
 ```powershell
 & <skill_root>/scripts/preflight.ps1
@@ -56,7 +58,19 @@
 bash <skill_root>/scripts/preflight.sh
 ```
 
-单独检查（不含 Rules 恢复）：
+**preflight 内置缓存判定**（先于全量检查执行）：
+
+| `gate-cache` | 含义 | preflight 行为 |
+|----------------------|------|------|
+| `valid` | `.preflight-last-run` 存在且距今 ≤ 7 天（标记**仅门禁通过时**写入，存在且未超期即通过） | 输出 `environment-ready: True（缓存）` + `skipped` 并直接退出；门禁报告标注「缓存命中 + 上次通过时间」 |
+| `missing` | 标记不存在（从未跑过，或上次门禁未通过未写入） | 继续全量执行 |
+| `stale` | 距今 > 7 天 | 继续全量执行，通过后刷新时间戳；随后按 §2.1 重新校验/更新 project-config |
+| `malformed` | 标记存在但时间不可解析 | 继续全量执行（通过后重写标记） |
+
+- 有效期默认 **7 天**：`--max-age-days=N`（PS：`-MaxAgeDays N`）或环境变量 `DEVLC_GATE_MAX_AGE_DAYS` 覆盖；`--force`（PS：`-Force`）或**删除 `.preflight-last-run`** 即强制全量重跑。
+- 时间戳由 **preflight 通过时自动写入**（首行可读时间 + 次行 epoch），无需手动维护；旧格式（仅首行时间）可兼容解析。
+
+单独检查（不含 Rules 恢复与缓存）：
 
 ```powershell
 & <skill_root>/scripts/check-env.ps1

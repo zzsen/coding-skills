@@ -10,7 +10,14 @@
 
 ### 1.1 何时输出
 
-完成 **Shell preflight** 并 Read `preparation.md` 后，**首个回复**必须输出本报告。
+完成 **Shell preflight**（内置门禁缓存：`.preflight-last-run` 距今 ≤ 7 天时输出 `gate-cache: valid` 并直接跳过全量检查）并 Read `preparation.md` 后，**首个回复**必须输出本报告。
+
+### 1.1a 缓存命中（preflight 输出 `gate-cache: valid`）
+
+`.dev-lifecycle/.preflight-last-run` **仅在门禁通过时写入**，故标记存在且未超期即代表上次门禁通过。
+此时门禁报告「检查时间」处标注 **「缓存命中，上次门禁通过于 <时间>（N 天前）」**，
+§1 各检查项填 ✅（依据即 preflight 输出的 `environment-ready: True（缓存）`），§5 门禁结论为「可以」。
+`gate-cache` 为 `stale` / `missing` / `malformed` 时 preflight 已自动全量执行，按其实际输出填写。
 
 ### 1.2 环境未就绪时
 
@@ -35,9 +42,8 @@
 ```markdown
 ## 🔒 dev-lifecycle 入口门禁检查报告
 
-> 检查时间：YYYY-MM-DD HH:mm:ss（Shell preflight 输出）
+> 检查时间：YYYY-MM-DD HH:mm:ss（Shell preflight 输出；缓存命中时为 .preflight-last-run 的上次通过时间，须标注「缓存命中」）
 > 用户诉求：<一句话复述>
-
 ### 1. 环境检查
 
 | 检查项 | 状态 | 说明 |
@@ -92,7 +98,7 @@
 
 | # | 条件 |
 |---|------|
-| 0 | 未执行 Shell preflight，或 §1 未引用 Shell 输出 |
+| 0 | 未执行 Shell preflight，或 §1 未引用其输出（缓存命中时引用 `gate-cache: valid` / `environment-ready: True（缓存）` 与上次通过时间） |
 | ~~1~~ | ~~Rules 缺失~~ —— **已废除**：常驻规则为 agent 可选项，缺失**不**构成阻断 |
 | 2a | `openspec-cli-installed: False` |
 | 2b | `openspec-list-ok: False`，或路径 `openspec` 仍为 False（CLI 已装但自动 init 失败 / list 失败） |

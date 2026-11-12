@@ -180,6 +180,9 @@ dlc_project_config_path() {
   fi
 }
 
+# 门禁通过时间标记：preflight **仅在 environment-ready: True 时**写入
+# （首行可读时间 + 次行 epoch）；preflight 入口处据此判定是否可在
+# 有效期内（默认 7 天）跳过全量门禁
 dlc_preflight_marker() {
   printf '%s' "$(dlc_state_dir)/.preflight-last-run"
 }

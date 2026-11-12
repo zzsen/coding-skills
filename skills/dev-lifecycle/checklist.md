@@ -8,7 +8,7 @@ Agent 每阶段完成时逐项核对。环境相关项见 [preparation.md](phase
 
 ### 环境与门禁
 
-- [ ] `preflight` 已作为首个 Shell 执行，门禁 §1 引用其输出
+- [ ] `preflight` 已作为首个 Shell 执行；`gate-cache: valid`（.preflight-last-run 距今 ≤ 7 天）则复用缓存，否则已全量执行且通过后刷新时间戳，门禁 §1 引用其输出
 - [ ] [00-pre-flight-check-report.md](templates/00-pre-flight-check-report.md) 结论「可以写文件」
 - [ ] Rules 已检查/恢复（preflight 内含 restore-rules）
 - [ ] Shell **`environment-ready: True`**（非仅 `openspec-ready`）

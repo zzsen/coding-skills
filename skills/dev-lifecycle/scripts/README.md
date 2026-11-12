@@ -19,7 +19,7 @@
 
 | 脚本 | 路径 | 调用阶段 | 功能 | 入参 | 输出 |
 |------|------|---------|------|------|------|
-| **preflight** | `preflight.ps1` / `preflight.sh` | 前置（**首个 Shell**） | `check-env` → `restore-rules` → `ensure-openspec` → `check-env` | 可选 `--json` / `-Json` | 分段检查输出；`.preflight-last-run` 标记 |
+| **preflight** | `preflight.ps1` / `preflight.sh` | 前置（**首个 Shell**） | `check-env` → `restore-rules` → `ensure-openspec` → `check-env`；**内置 7 天门禁缓存**：`.preflight-last-run` 未超期则输出 `gate-cache: valid` 直接跳过 | 可选 `--json` / `-Json`、`--force` / `-Force`、`--max-age-days=N` | 分段检查输出；**仅门禁通过时**刷新 `.preflight-last-run` 时间戳 |
 | **check-env** | `check-env.ps1` / `check-env.sh` | 前置步骤 1 | 环境定点检查 | 可选 `--json` | 路径（含 `openspec/`）、`openspec-*`、`superpowers_*`、`environment-ready` 等 |
 | **_agent-lib**（库） | `_agent-lib.ps1` / `.sh` | 被其他脚本 source | agent 探测、skills 目录 / openspec slug / 规则载体 / 项目级状态路径解析 | — | 函数库，不单独执行 |
 | **check-superpowers** | `check-superpowers.ps1` / `.sh` | 前置 / 单独 | 按 agent 查找 `writing-plans` / `executing-plans` | `--json`、`--agent=<id>` | `agent`、`superpowers-ready`、两个 Skill 路径 |
@@ -45,8 +45,9 @@
 ## 常用命令
 
 ```powershell
-# 入口门禁（推荐，替代分步 0.5 + 0）
+# 入口门禁（推荐，替代分步 0.5 + 0；内置 7 天缓存，未超期自动跳过）
 & <skill_root>/scripts/preflight.ps1
+# 强制全量重跑：& <skill_root>/scripts/preflight.ps1 -Force
 
 # 创建计划目录
 & <skill_root>/scripts/init-plan-dir.ps1 -Type feat -Detail user-management
@@ -56,7 +57,7 @@
 ```
 
 ```bash
-bash <skill_root>/scripts/preflight.sh
+bash <skill_root>/scripts/preflight.sh            # 内置 7 天缓存；--force 强制全量
 bash <skill_root>/scripts/init-plan-dir.sh --type feat --detail user-management
 bash <skill_root>/scripts/run-tests.sh dev-plan/.../
 bash <skill_root>/scripts/run-lint.sh dev-plan/.../
@@ -64,7 +65,8 @@ bash <skill_root>/scripts/run-lint.sh dev-plan/.../
 
 ## 说明
 
-- **preflight** 为 SKILL §1.1 步骤 2 的推荐入口；亦可单独跑 `check-env` + `restore-rules` + `ensure-openspec`。
+- **preflight** 为 SKILL §1.1 步骤 1 的唯一首调用：先查 `.dev-lifecycle/.preflight-last-run`（仅门禁通过时写入），距今 ≤ 7 天（`--max-age-days` / `DEVLC_GATE_MAX_AGE_DAYS` 可覆盖）→ `gate-cache: valid` 直接退出，本会话跳过全量门禁；超期 / 缺失 / 不可解析 → 自动全量执行，通过后刷新时间戳（并按 §2.1 重新校验 project-config）。`--force` 或删除该标记可强制重跑。
+- **preflight** 亦可替换为单独跑 `check-env` + `restore-rules` + `ensure-openspec`（但无缓存、不刷新通过时间戳，不推荐）。
 - **writing-plans**、**AskUserQuestion 确认**、**/opsx:*** 命令不可由脚本替代。
 - `run-lint` 当前硬编码 `backend/` + `frontend/`；多语言扩展见 [phase5.md](../phases/phase5.md)。
 

@@ -60,13 +60,16 @@ npx skills add obra/superpowers --skill writing-plans --skill executing-plans -a
 ## 三、入口门禁
 
 **第一个工具调用必须是 Shell**（先于任何项目 Read、禁止 `cd &&` 拼接）。
+preflight **内置门禁时间戳缓存**：`.dev-lifecycle/.preflight-last-run` 距今 ≤ 7 天 → 输出 `gate-cache: valid` 直接跳过全量门禁（标记仅门禁通过时写入，存在且未超期即通过）；超期 / 缺失 / 不可解析 → 自动全量执行，通过后刷新时间戳，并重新校验 project-config。
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<skill_root>\scripts\preflight.ps1"
+# 强制重跑（忽略缓存）：追加 -Force
 ```
 
 ```bash
 bash <skill_root>/scripts/preflight.sh
+# 强制重跑（忽略缓存）：追加 --force
 ```
 
 详细步骤：[phases/preparation.md](phases/preparation.md) · 报告模板：[templates/00-pre-flight-check-report.md](templates/00-pre-flight-check-report.md)
@@ -90,7 +93,7 @@ bash <skill_root>/scripts/preflight.sh
 
 ```mermaid
 flowchart TD
-    Start([需求]) --> Gate["§一 入口门禁\nShell preflight + 报告"]
+    Start([需求]) --> Gate["§一 入口门禁\nShell preflight（含7天缓存）+ 报告"]
     Gate --> P1["Phase 1\nExplore + /opsx:propose"]
     P1 -->|用户确认| P2["Phase 2\nwriting-plans Skill"]
     P2 -->|用户确认| P3["Phase 3\nexecuting-plans\n→全Wave✅→apply收尾"]
@@ -158,7 +161,7 @@ flowchart TD
 **新功能逐步清单**
 
 ```
-1. Shell preflight → 门禁报告
+1. Shell preflight（内置 7 天缓存）→ 门禁报告
 2. 环境 ❌ → 仅环境 AskUserQuestion；停止
 3. 门禁「可以」→ exploration.md → project-config
 4. 创建计划目录
@@ -217,7 +220,7 @@ docs/superpowers/plans/YYYY-MM-DD-<feature>-tdd.md
 | 文件 | 时机 |
 |------|------|
 | SKILL.md | 初始化 |
-| Shell preflight | **首个工具调用** |
+| Shell preflight | **首个工具调用**（`gate-cache: valid` 则自动跳过全量门禁） |
 | preparation + 00-pre-flight | preflight 之后 |
 | exploration.md | **门禁「可以」后** |
 | phaseN.md | 进入对应 Phase |
@@ -228,7 +231,7 @@ docs/superpowers/plans/YYYY-MM-DD-<feature>-tdd.md
 
 | 阶段 | 脚本 |
 |------|------|
-| 前置 | `preflight` / `check-env` / `restore-rules` / `ensure-openspec` |
+| 前置 | `preflight`（含 7 天门禁缓存）/ `check-env` / `restore-rules` / `ensure-openspec` |
 | Phase 1 前 | `init-plan-dir`、`validate-project-config`、`safe-list-files` |
 | Phase 2 前 | `gate-phase2` |
 | Phase 3 | `check-wave-sync`、`check-tasks-sync` |
