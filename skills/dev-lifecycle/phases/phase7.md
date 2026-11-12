@@ -69,6 +69,11 @@ bash <skill_root>/scripts/update-proposal-links.sh --plan-dir <plan-dir> --chang
 & <skill_root>/scripts/gate-phase7.ps1 -PlanDir <plan-dir>
 ```
 
+### 合并回源分支（git 必做）
+
+归档 + 链接更新完成后，运行 `worktree-merge-back --change-name <name> --kind feature|fix`：
+rebase（到源分支最新）→ merge（默认 `--no-ff`）→ worktree remove → 删分支 → 登记表置 `merged`。**冲突停下交用户，绝不自动 resolve**。非 git 项目跳过。
+
 ---
 
 ## 三、验收联动更新（生成 7 之前）

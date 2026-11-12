@@ -6,6 +6,8 @@
 > **收尾（阶段 B）**：**全部 Wave ✅ 之后**，若 `tasks.md` 仍有未勾选项，**才** **`/opsx:apply`** 或 **`openspec-apply-change`**。
 >
 > **禁止**：Phase 3 入口直接 `/opsx:apply` 或 `openspec-apply-change` 代替 Wave TDD（`openspec-apply-change` Skill 写「开始实现」时，dev-lifecycle **仍以本节为准**）。
+>
+> **worktree（git 必做）**：Phase 2 已创建隔离 worktree。本节所有源码/测试/文档的 Edit/Write、测试/lint/构建，一律在 worktree 路径 `<git-root>/.worktrees/<branch>` 内进行；`3.dev.md` 报告仍写主工作树 `<plan-dir>/`。非 git 项目跳过，在主工作树按 change 目录隔离。
 
 ---
 
