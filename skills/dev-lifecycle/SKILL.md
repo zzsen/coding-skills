@@ -262,6 +262,8 @@ bash <skill_root>/scripts/validate-project-config.sh
 | 有历史产物、无验收 | B/C/D… | 按最后完成 Phase 从下一阶段继续 |
 | 未引用计划目录 | E：新需求 | 从 Phase 1 开始 |
 
+> **worktree 续做**：若该 change 处于 Phase ≥3 且有活跃 worktree（`worktree-status`），代码改动须在 worktree 路径内进行，dev-plan 报告仍在主工作树；定位见「三、worktree 隔离」。
+
 ### 2.3 用户诉求 → Phase
 
 | 用户表述 | 应完成 Phase |
@@ -288,11 +290,13 @@ Explore 输出结构与 AskUserQuestion 时机见 [phase1.md](phases/phase1.md) 
 需求 → §一 入口门禁 → 创建 dev-plan 目录
   → Phase 1 /opsx:explore + /opsx:propose → 1.proposal.md + openspec/changes/<name>/
   → Phase 2 writing-plans Skill → 2.plan.md + docs/superpowers/plans/*-tdd.md
-  → Phase 3：executing-plans（Wave 1…N，TDD）→ 全部 Wave ✅ → /opsx:apply（仅 tasks 剩余项）→ 3.dev.md + 代码
-  → Phase 4：run-tests 基线 → 补自动化测试 → 全量 run-tests 循环至通过 → 4.test-case.md
-  → Phase 5 Lint ↔ Phase 4（循环至通过）→ 5.lint-report.md
-  → Phase 6 文档 → 6.docs-update.md
-  → Phase 7 验收 → 7.acceptance.md + /opsx:archive
+  → [worktree] Phase 2 确认后：commit openspec+TDD → 确认源分支 → worktree-create
+  → Phase 3（worktree 内）：executing-plans（Wave 1…N，TDD）→ 全部 Wave ✅ → /opsx:apply（仅 tasks 剩余项）→ 3.dev.md（main）+ 代码（worktree）
+  → Phase 4（worktree）：run-tests 基线 → 补自动化测试 → 全量 run-tests 循环至通过 → 4.test-case.md
+  → Phase 5（worktree）Lint ↔ Phase 4（循环至通过）→ 5.lint-report.md
+  → Phase 6（worktree）文档 → 6.docs-update.md
+  → Phase 7 验收 → /opsx:archive（worktree）+ 7.acceptance.md（main）
+  → [worktree] 验收通过后：worktree-merge-back（rebase → merge → 清理）
   → 用户反馈 → 回退 Phase 3
 ```
 
@@ -316,14 +320,47 @@ Explore 输出结构与 AskUserQuestion 时机见 [phase1.md](phases/phase1.md) 
 |----|-----|------|
 | 开始 | Phase 1 | 门禁通过 + 计划目录已创建 |
 | Phase 1 | Phase 2 | 质量门禁 + **用户确认** |
-| Phase 2 | Phase 3 | 质量门禁 + **用户确认** |
+| Phase 2 | Phase 3 | 质量门禁 + **用户确认** + **[worktree] `worktree-create`**（确认源分支后创建） |
 | Phase 3 | Phase 4 | **先** 全部 Wave ✅（`executing-plans`）；**再** `/opsx:apply` 或 `openspec-apply-change` 处理 `tasks.md` 剩余项（无剩余可跳过 apply） |
 | Phase 4 | Phase 5 | **`run-tests` 全量通过**（`TESTS: pass`）且已补自动化测试；或用户 AskUserQuestion 确认跳过 |
 | Phase 5 | Phase 6 | Lint 零错误 |
 | Phase 6 | Phase 7 | 文档完成 |
-| Phase 7 | 完成 | 验收 + **`/opsx:archive`** 或 **`openspec-archive-change`** |
+| Phase 7 | 完成 | 验收 + **`/opsx:archive`** 或 **`openspec-archive-change`** + **[worktree] `worktree-merge-back`**（rebase → merge → 清理） |
 | Phase 7 | Phase 3 | 验收后反馈 |
 | Phase 5 | Phase 4 | Lint 修复后强制回退测试 |
+
+### worktree 隔离（并行开发，可选）
+
+> **目的**：一个 change = 一个分支 + 一个独立 worktree，并行功能互不踩源码。
+> 非 git 项目自动降级为单工作树（靠 change 目录隔离，即现状）。rebase / merge /
+> worktree 清理由 `worktree-merge-back` 执行，**冲突一律停下交用户，绝不自动 resolve**。
+
+| 内容 | 位置 |
+|------|------|
+| dev-plan 各 phase 报告、project-config、`.dev-lifecycle/` | **主工作树（源分支）**，全程在此生成/跟进 |
+| openspec（changes / specs / archive）、`docs/superpowers/plans/*-tdd.md` | **feature 分支（worktree）**，随分支走 |
+| 源码 / 测试 / 项目文档（Phase 3~6 改动） | **worktree** |
+
+**隔离（Phase 2 → Phase 3 之间）**
+
+1. Phase 2 确认后，把 openspec + TDD 计划 **commit 到当前（源）分支**（worktree 是干净 checkout，不 commit 带不过去）。
+2. **AskUserQuestion 只确认源分支**（默认当前分支）；分支名 `{feature|fix}-<change-name>` 与前缀由需求分析自动得出，**无需用户确认**。
+3. `worktree-create --change-name <name> --kind feature|fix --base-branch <源分支>` → 创建 `.worktrees/<branch>`、登记 `.dev-lifecycle/worktrees.tsv`，并自动把 `.worktrees/` 写进 `.gitignore`。
+
+**开发期（Phase 3~6）**
+
+- 代码 / 测试 / 文档改动都在 **worktree 路径**下；dev-plan 报告（3.dev.md~6.docs-update.md）仍在**主工作树**的 dev-plan 目录跟进。
+- apply 勾选 tasks、TDD step 勾选在 worktree 内的 openspec / TDD 副本上做（随 merge 合回）。
+
+**合并（Phase 7 完成后）**
+
+1. Phase 7：`/opsx:archive`（worktree 内）→ 7.acceptance.md（主工作树）→ 用户验收通过。
+2. `worktree-merge-back --change-name <name> --kind feature|fix`：rebase（到源分支最新）→ merge（默认 `--no-ff`）→ worktree remove → 删分支 → 登记表置 `merged`。
+
+**resume / 续做**
+
+- 未完成 change 的 dev-plan 目录始终在主工作树；`worktree-status`（或登记表）给出「哪个 change 有活跃 worktree、路径在哪」。
+- 续做时：定位 dev-plan 目录 → 取 change-name → `worktree-status` 找对应 worktree → **代码进 worktree、dev-plan 报告进主工作树**。
 
 ---
 
@@ -401,7 +438,9 @@ bash <skill_root>/scripts/next-task-id.sh
 4. 创建计划目录（含 lint-results/）
 5. Phase 1：`/opsx:explore` → **对话正文 §2.1** → 方案 AskUserQuestion（用户选定）→ `/opsx:propose` → 1.proposal.md
 6. 用户确认 Phase 1 → **`writing-plans` Skill** → 2.plan.md
-7. Phase 3：**`executing-plans`** 按 Wave TDD → 全部 Wave ✅ → **`/opsx:apply`**（仅剩余 tasks）→ Phase 4~7
+6.5 [worktree] 确认源分支 → `worktree-create`（后续代码在 worktree 内，dev-plan 报告仍在主工作树）
+7. Phase 3（worktree）：**`executing-plans`** 按 Wave TDD → 全部 Wave ✅ → **`/opsx:apply`**（仅剩余 tasks）→ Phase 4~7（worktree）
+7.5 [worktree] Phase 7 验收 + archive 后 → `worktree-merge-back`
 ```
 
 ---
@@ -434,4 +473,5 @@ bash <skill_root>/scripts/next-task-id.sh
 | Phase 4 | `run-tests`、`parse-test-results` |
 | Phase 5 | `run-lint`、`parse-lint-results` |
 | Phase 7 | `gate-phase7`、`update-proposal-links` |
+| worktree 隔离 | `worktree-create`、`worktree-status`、`worktree-merge-back` |
 | 通用 | `timestamp`、`next-task-id`、`check-plan-artifacts` |
