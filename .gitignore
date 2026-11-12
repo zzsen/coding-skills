@@ -16,3 +16,4 @@ dev-plan/
 commit-plan/
 test-results/
 lint-results/
+.worktrees/
