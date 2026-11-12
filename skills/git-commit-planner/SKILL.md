@@ -47,7 +47,7 @@ description: Git 代码提交计划管理工具。扫描工作区内所有 Git �
 
 以下常量在多个阶段的脚本中复用，**新增排除项时只需修改此处**：
 
-- **排除目录**：`node_modules`、`.venv`、`vendor`、`__pycache__`、`.cursor`、`.claude`、`.agents`、`dist`、`.vite`、`logs`、`log`、`.git`
+- **排除目录**：`node_modules`、`.venv`、`vendor`、`__pycache__`、`.cursor`、`.claude`、`.agents`、`.worktrees`、`dist`、`.vite`、`logs`、`log`、`.git`
 - **排除扩展名**：`.exe`、`.dll`、`.so`、`.dylib`、`.pyc`
 
 ## 执行脚本（阶段 5 必用）
@@ -77,7 +77,7 @@ git -C "<workspace_root>" rev-parse --git-dir 2>&1
 ```powershell
 # PowerShell - 扫描 Git 仓库（排除项见通用常量）
 $rootPath = "<workspace_root>"
-$excludeDirs = @("node_modules", ".venv", "vendor", "__pycache__", ".cursor", ".claude", ".agents", "dist", ".vite")
+$excludeDirs = @("node_modules", ".venv", "vendor", "__pycache__", ".cursor", ".claude", ".agents", ".worktrees", "dist", ".vite")
 $gitRepos = @()
 
 # 检查根目录
@@ -111,6 +111,7 @@ find "<workspace_root>" -maxdepth 4 -name ".git" \( -type d -o -type f \) \
     -not -path "*/.cursor/*" \
     -not -path "*/.claude/*" \
     -not -path "*/.agents/*" \
+    -not -path "*/.worktrees/*" \
     2>/dev/null | xargs -I{} dirname {}
 ```
 
@@ -173,13 +174,13 @@ git -C "<repo_path>" status --porcelain
 ```powershell
 # PowerShell - 辅助分析（排除项见通用常量）
 Get-ChildItem -Path "<dir_path>" -Recurse -File |
-  Where-Object { $_.FullName -notmatch '(node_modules|\.venv|vendor|__pycache__|\.cursor|\.claude|\.agents|dist|\.vite|logs|log|\.git)' -and $_.Extension -notin '.exe','.dll','.so','.dylib','.pyc' } |
+  Where-Object { $_.FullName -notmatch '(node_modules|\.venv|vendor|__pycache__|\.cursor|\.claude|\.agents|\.worktrees|dist|\.vite|logs|log|\.git)' -and $_.Extension -notin '.exe','.dll','.so','.dylib','.pyc' } |
   Sort-Object LastWriteTime -Descending | Select-Object LastWriteTime, FullName
 ```
 
 ```bash
 # Bash/Linux - 辅助分析（排除项见通用常量）
-EXCLUDE="node_modules|\.venv|vendor|__pycache__|\.cursor|\.claude|\.agents|dist|\.vite|logs|log|\.git"
+EXCLUDE="node_modules|\.venv|vendor|__pycache__|\.cursor|\.claude|\.agents|\.worktrees|dist|\.vite|logs|log|\.git"
 find "<dir_path>" -type f | grep -Ev "$EXCLUDE" | while read f; do stat --format="%Y %y %n" "$f" 2>/dev/null; done | sort -rn | head -200
 ```
 
@@ -582,6 +583,9 @@ Thumbs.db
 logs/
 log/
 *.log.*
+
+# worktree 隔离目录（dev-lifecycle 并行开发）
+.worktrees/
 
 # Git 提交计划（由 git-commit-planner 生成的临时文件）
 commit-plan/
