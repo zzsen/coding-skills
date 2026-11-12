@@ -111,6 +111,15 @@ else
 fi
 set -e
 
+echo ""
+echo "=== preflight: git / worktree 状态（信息项，不参与 environment-ready）==="
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "git: repo（branch = $(git branch --show-current 2>/dev/null || echo detached)）"
+  echo "worktree: 共 $(git worktree list 2>/dev/null | wc -l | tr -d ' ') 个 worktree"
+else
+  echo "git: not-repo（worktree 隔离不可用，降级为单工作树内按 change 目录隔离）"
+fi
+
 # 取最终门禁结论；**仅通过时**刷新「最后通过时间」标记（preflight 入口缓存据此跳过全量门禁，
 # gate-phase2 可检测）；未通过则不更新，下次会话仍会重跑门禁
 MARKER="$(dlc_preflight_marker)"

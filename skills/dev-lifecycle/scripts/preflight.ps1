@@ -91,6 +91,18 @@ Write-Host ""
 Write-Host "=== preflight: 环境检查（恢复后）==="
 if ($Json) { & "$ScriptDir/check-env.ps1" -Agent $Agent -Json } else { & "$ScriptDir/check-env.ps1" -Agent $Agent }
 
+Write-Host ""
+Write-Host "=== preflight: git / worktree 状态（信息项，不参与 environment-ready）==="
+$isRepo = (& git rev-parse --is-inside-work-tree 2>$null) -join ''
+if ($isRepo -eq 'true') {
+  $cur = (& git branch --show-current 2>$null) -join ''
+  $wtCount = @(& git worktree list 2>$null).Count
+  Write-Host "git: repo（branch = $cur）"
+  Write-Host "worktree: 共 $wtCount 个 worktree"
+} else {
+  Write-Host "git: not-repo（worktree 隔离不可用，降级为单工作树内按 change 目录隔离）"
+}
+
 # 取最终门禁结论；**仅通过时**刷新「最后通过时间」标记（preflight 入口缓存据此跳过全量门禁，
 # gate-phase2 可检测）；未通过则不更新，下次会话仍会重跑门禁
 $marker = Get-DlcPreflightMarker
