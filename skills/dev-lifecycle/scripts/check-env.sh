@@ -54,8 +54,8 @@ paths=(
   "$(dlc_project_config_path)"
 )
 
-# 步骤 3：OpenSpec CLI 全局安装检测
-if command -v openspec >/dev/null 2>&1; then
+# 步骤 3：OpenSpec CLI 检测（多安装方式：PATH / nvm / volta / fnm / npm-global）
+if dlc_openspec_resolve; then
   cli_installed=true
   openspec_cli=$(openspec --version 2>&1 || echo "error")
 else

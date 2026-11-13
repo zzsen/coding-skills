@@ -28,7 +28,7 @@ if (Test-Path -LiteralPath $openspecDir -PathType Container) {
   exit 0
 }
 
-$cli = Get-Command openspec -ErrorAction SilentlyContinue
+$cli = Resolve-DlcOpenspec
 if ($null -eq $cli) {
   Write-Output 'RESULT: OPENSPEC_CLI_MISSING'
   Write-Output 'HINT: Install with npm install -g @fission-ai/openspec@latest'

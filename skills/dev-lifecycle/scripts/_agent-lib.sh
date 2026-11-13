@@ -89,6 +89,35 @@ dlc_openspec_tool() {
   esac
 }
 
+# ── OpenSpec CLI 探测（多安装方式兼容）───────────────────────────────────────
+# 依次探测 PATH、nvm、npm-global、volta、fnm 等常见安装位置。找到后把其 bin
+# 目录前置到 PATH（该目录通常同时含 node，保证 openspec 的
+# `#!/usr/bin/env node` shebang 可解析）。成功返回 0，未找到返回 1。
+# 【调用方注意】必须用 `if dlc_openspec_resolve; then ...` 直接调用，勿放进
+#   命令替换 $() —— 否则 export PATH 只在子 shell 生效，父 shell 仍找不到 openspec。
+dlc_openspec_resolve() {
+  local bin d
+  bin="$(command -v openspec 2>/dev/null || true)"
+  if [ -n "$bin" ]; then
+    return 0
+  fi
+  for d in \
+    "$HOME"/.nvm/current/bin \
+    "$HOME"/.nvm/versions/node/*/bin \
+    "$HOME"/.npm-global/bin \
+    "$HOME"/.volta/bin \
+    "$HOME"/.local/share/fnm/node-versions/*/installation/bin \
+    "$HOME/Library/Application Support/fnm/node-versions"/*/installation/bin \
+    "$HOME"/.fnm/node-versions/*/installation/bin \
+    "$HOME"/.fnm/aliases/default/bin ; do
+    if [ -x "$d/openspec" ]; then
+      export PATH="$d:$PATH"
+      return 0
+    fi
+  done
+  return 1
+}
+
 # ── skills 目录候选（项目优先，其次全局）────────────────────────────────────
 dlc_skills_dirs() {
   case "$1" in

@@ -41,7 +41,7 @@ if [ -d "$OPENSPEC_DIR" ]; then
   exit 0
 fi
 
-if ! command -v openspec >/dev/null 2>&1; then
+if ! dlc_openspec_resolve; then
   echo "RESULT: OPENSPEC_CLI_MISSING"
   echo "HINT: Install with npm install -g @fission-ai/openspec@latest"
   exit 1

@@ -52,8 +52,9 @@ $paths = @(
 
 $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
-# 步骤 3：OpenSpec CLI 全局安装检测
-$cliInstalled = $null -ne (Get-Command openspec -ErrorAction SilentlyContinue)
+# 步骤 3：OpenSpec CLI 检测（多安装方式：PATH / nvm / volta / fnm / npm-global）
+$openspecBin = Resolve-DlcOpenspec
+$cliInstalled = $null -ne $openspecBin
 if ($cliInstalled) {
   $openspecCli = (openspec --version 2>&1 | Out-String).Trim()
 } else {

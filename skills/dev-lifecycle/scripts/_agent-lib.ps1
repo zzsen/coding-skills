@@ -62,6 +62,52 @@ function Get-DlcOpenspecTool {
   }
 }
 
+# OpenSpec CLI 探测（多安装方式兼容）：PATH / nvm / npm-global / volta / fnm。
+# 找到后把其 bin 目录前置到 PATH（该目录通常同时含 node，保证 shebang 可解析），
+# 返回 openspec 可执行文件绝对路径；未找到返回 $null。
+function Resolve-DlcOpenspec {
+  $cmd = Get-Command openspec -ErrorAction SilentlyContinue
+  if ($cmd) { return $cmd.Source }
+
+  $home_ = $env:USERPROFILE; if (-not $home_) { $home_ = $env:HOME }
+  if (-not $home_) { return $null }
+
+  $candidates = @(
+    (Join-Path $home_ '.nvm/current/bin'),
+    (Join-Path $home_ '.npm-global/bin'),
+    (Join-Path $home_ '.volta/bin'),
+    (Join-Path $home_ '.fnm/aliases/default/bin')
+  )
+
+  $nvmVersions = Join-Path $home_ '.nvm/versions/node'
+  if (Test-Path -LiteralPath $nvmVersions -PathType Container) {
+    $candidates += Get-ChildItem -LiteralPath $nvmVersions -Directory |
+      ForEach-Object { Join-Path $_.FullName 'bin' }
+  }
+
+  $fnmRoots = @(
+    (Join-Path $home_ '.local/share/fnm/node-versions'),
+    (Join-Path $home_ 'Library/Application Support/fnm/node-versions'),
+    (Join-Path $home_ '.fnm/node-versions')
+  )
+  foreach ($root in $fnmRoots) {
+    if (Test-Path -LiteralPath $root -PathType Container) {
+      $candidates += Get-ChildItem -LiteralPath $root -Directory |
+        ForEach-Object { Join-Path $_.FullName 'installation/bin' }
+    }
+  }
+
+  foreach ($d in $candidates) {
+    $bin = Join-Path $d 'openspec'
+    if (Test-Path -LiteralPath $bin -PathType Leaf) {
+      $sep = [System.IO.Path]::PathSeparator
+      $env:PATH = "$d$sep$env:PATH"
+      return $bin
+    }
+  }
+  return $null
+}
+
 function Get-DlcSkillsDirs {
   param([string]$Agent)
   $home_ = $env:USERPROFILE; if (-not $home_) { $home_ = $env:HOME }
