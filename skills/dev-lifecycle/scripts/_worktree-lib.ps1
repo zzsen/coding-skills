@@ -2,7 +2,8 @@
 # _worktree-lib.ps1 — worktree 隔离辅助库（PowerShell）
 # =============================================================================
 # 【功能】.sh 版 _worktree-lib.sh 的 PowerShell 对等实现。
-# 【调用方】被 worktree-create.ps1 / worktree-status.ps1 / worktree-merge-back.ps1 dot-source。
+# 【调用方】被 worktree-create.ps1 / worktree-status.ps1 / worktree-merge-back.ps1 /
+#           gate-phase3.ps1 dot-source。
 # 【导出函数】
 #   Get-DlcWtRoot            worktree 根目录（默认 .worktrees，DEVLC_WORKTREES_ROOT 可覆盖）
 #   Get-DlcWtRegistry        登记表路径 .dev-lifecycle/worktrees.tsv

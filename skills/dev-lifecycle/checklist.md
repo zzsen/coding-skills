@@ -75,6 +75,8 @@ Agent 每阶段完成时逐项核对。环境相关项见 [preparation.md](phase
 
 ## Phase 3: Wave 开发
 
+- [ ] **`gate-phase3` 已通过**（git 项目：worktree 隔离决策——AskUserQuestion 是否用 worktree + 源分支默认当前分支；用则 `worktree-create`）
+- [ ] `3.dev.md` 头部含「Worktree 隔离上下文」（是否 worktree + `base_branch` + `target_branch`），供续做 agent 定位
 - [ ] 按 Wave 顺序 TDD 实施
 - [ ] Wave 状态：进行中/完成 + `2.plan.md` 同步
 - [ ] TDD 计划本 Wave 范围内 Step 勾选框已 `- [x]`（Wave ✅ 时不得残留 `- [ ]`）

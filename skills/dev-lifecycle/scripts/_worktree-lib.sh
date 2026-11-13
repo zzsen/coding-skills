@@ -3,8 +3,8 @@
 # _worktree-lib.sh — worktree 隔离辅助库（dev-lifecycle）
 # =============================================================================
 # 【功能】worktree 隔离的公共函数：根目录、登记表路径、分支/路径命名、仓库定位。
-# 【调用方】被 worktree-create.sh / worktree-status.sh / worktree-merge-back.sh source，
-#           不单独执行。
+# 【调用方】被 worktree-create.sh / worktree-status.sh / worktree-merge-back.sh /
+#           gate-phase3.sh source，不单独执行。
 # 【导出函数】
 #   dlc_wt_root            worktree 根目录（默认 .worktrees，DEVLC_WORKTREES_ROOT 可覆盖）
 #   dlc_wt_registry        登记表路径 .dev-lifecycle/worktrees.tsv

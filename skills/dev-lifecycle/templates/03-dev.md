@@ -11,6 +11,17 @@
 > 生成时间：YYYY-MM-DD HH:mm:ss
 > 最后更新：YYYY-MM-DD HH:mm:ss
 
+## Worktree 隔离上下文
+
+> 进入 Phase 3 时的隔离决策，来自 `gate-phase3` 输出与用户选择；供续做 agent 定位代码位置。
+
+| 项 | 值 |
+|----|----|
+| 是否使用 worktree | 是 / 否 |
+| 源分支 base_branch | `main`（默认当前分支，或用户指定） |
+| 目标分支 target_branch | `feature-<change-name>`（worktree=是时） |
+| worktree 路径 | `<git-root>/.worktrees/<branch>`（worktree=是时） |
+
 ## 开发轮次
 
 ### 第 1 轮 — Wave 1 实施
