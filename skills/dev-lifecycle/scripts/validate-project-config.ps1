@@ -65,5 +65,12 @@ if ($content -match '## 7\. 探索约定' -and $content -match '\|.*前端探索
   $fail = 1
 }
 
+if ($content -match '\| 仓库类型 \|[^\r\n]*(single|multi|none)') {
+  Check "✅ 仓库类型已填写（single/multi/none）"
+} else {
+  Check "❌ 仓库类型未填写或非法（须 single / multi / none）"
+  $fail = 1
+}
+
 if ($fail -eq 0) { "RESULT: valid" } else { "RESULT: invalid" }
 exit $fail

@@ -82,5 +82,13 @@ else
   fail=1
 fi
 
+# 校验 5：仓库类型（single / multi / none）
+if grep -qE '\| 仓库类型 \|[^\n]*(single|multi|none)' "$CONFIG"; then
+  check "✅ 仓库类型已填写（single/multi/none）"
+else
+  check "❌ 仓库类型未填写或非法（须 single / multi / none）"
+  fail=1
+fi
+
 [ "$fail" -eq 0 ] && echo "RESULT: valid" || echo "RESULT: invalid"
 exit "$fail"

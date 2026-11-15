@@ -26,6 +26,14 @@
 | 主要语言 | {{LANGUAGES}} |
 | 框架 | {{FRAMEWORKS}} |
 | 包管理 | {{PACKAGE_MANAGERS}} |
+| 仓库类型 | {{REPO_TYPE}}（single / multi / none，由 `detect-repos` 探测） |
+
+### 仓库列表（`detect-repos` 生成，供 Phase 3 worktree 定位受影响仓库）
+
+| 相对路径 | 默认分支 |
+|---------|---------|
+| {{REPO_1_PATH}} | {{REPO_1_BASE}} |
+| {{REPO_2_PATH}} | {{REPO_2_BASE}} |
 
 ---
 
@@ -123,5 +131,6 @@
 | 3 | 服务映射表路径与仓库实际目录匹配 | 抽样核对 |
 | 4 | 无未替换的 `{{占位符}}` | 全文搜索 `{{` |
 | 5 | §7 探索约定已填写 | 非空；且未重复维护忽略列表（忽略以 exploration.md 为准） |
+| 6 | 仓库类型为 single / multi / none；single/multi 时仓库列表非空 | 读 §1 仓库类型与仓库列表 |
 
 任一失败 → **判定 project-config 无效**，禁止进入 Propose，须重新探索生成。

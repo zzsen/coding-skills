@@ -93,9 +93,22 @@ bash <skill_root>/scripts/safe-list-files.sh --scope all
 ## 四、project-config 生成
 
 1. 复制 [templates/project-config.md](../templates/project-config.md) → `project-config.md`
-2. 按 §三白名单探索（`safe-list-files`），填写所有 `{{占位符}}`
-3. 补充 §6 文档映射、§8 特殊约定
-4. 运行 `validate-project-config` 通过 → 方可 Propose
+2. 运行 `detect-repos` 探测仓库布局 → 填 §1「仓库类型」与「仓库列表」（single / multi / none，及每仓库相对路径 + 默认分支）
+3. 按 §三白名单探索（`safe-list-files`），填写其余 `{{占位符}}`
+4. 补充 §6 文档映射、§8 特殊约定
+5. 运行 `validate-project-config` 通过 → 方可 Propose
+
+**仓库探测**：
+
+```bash
+bash <skill_root>/scripts/detect-repos.sh
+```
+
+```powershell
+& <skill_root>/scripts/detect-repos.ps1
+```
+
+输出 `REPO_TYPE: single|multi|none` + 每仓库 `repo: <相对路径>|<base>|<绝对路径>`，据此填 §1。
 
 ---
 
