@@ -30,10 +30,11 @@
 | **init-plan-dir** | `init-plan-dir.ps1` / `init-plan-dir.sh` | Phase 1 前 | 创建 dev-plan 目录 | `--type` + `--detail` | 计划目录路径 |
 | **timestamp** | `timestamp.ps1` / `timestamp.sh` | 全阶段 | 系统时间 | `--format datetime\|date\|dir-ts\|iso-date` | 时间字符串 |
 | **next-task-id** | `next-task-id.ps1` / `next-task-id.sh` | Phase 1~7 | 下一任务编号 | 可选 `--plan-dir` | `T-YYYYMMDD-N` |
-| **validate-project-config** | `validate-project-config.ps1` / `.sh` | Phase 1 前 | 校验 project-config | 可选 `--path` | `RESULT: valid/invalid` |
+| **validate-project-config** | `validate-project-config.ps1` / `.sh` | Phase 1 前 | 校验 project-config（含仓库类型） | 可选 `--path` | `RESULT: valid/invalid` |
+| **detect-repos** | `detect-repos.ps1` / `.sh` | 探索（project-config 生成） | 探测仓库布局（single/multi/none）+ 每仓库相对路径与默认分支 | — | `REPO_TYPE` + `repo:` 行 |
 | **safe-list-files** | `safe-list-files.ps1` / `.sh` | 探索 | 白名单路径列表 | `--scope backend\|frontend\|all` | 允许探索的文件路径 |
 | **gate-phase2** | `gate-phase2.ps1` / `.sh` | Phase 2 前 | 硬门禁检查 | `--plan-dir` + `--change-name` | `GATE_PHASE2: pass/block` |
-| **gate-phase3** | `gate-phase3.ps1` / `.sh` | Phase 3 入口 | worktree 隔离硬门禁：非 git 放行 / 已有 active worktree 放行并输出上下文 / 无则 block | `--change-name` | `GATE_PHASE3: pass/block` + `worktree` / `target_branch` / `base_branch` / `worktree_path` |
+| **gate-phase3** | `gate-phase3.ps1` / `.sh` | Phase 3（创建后 / 续做） | worktree **状态查询**（不决策）：该 change 是否有 active worktree + 输出 target/base/path；非 git / 多仓库为兜底探测 | `--change-name`、可选 `--repo` | `GATE_PHASE3: pass/block` + `git` / `worktree` / `target_branch` / `base_branch` / `worktree_path` |
 | **gate-phase7** | `gate-phase7.ps1` / `.sh` | Phase 7 | 验收前完整性 | `--plan-dir` | `GATE_PHASE7: pass/block` |
 | **check-plan-artifacts** | `check-plan-artifacts.ps1` / `.sh` | 各 Phase 完成 | 按阶段检查产物 | `--plan-dir` + `--phase 1-7` | `ARTIFACTS_PHASEn: pass/block` |
 | **run-tests** | `run-tests.ps1` / `run-tests.sh` | Phase 4 | 执行 go test / vitest | `<plan-dir>` | `test-results/*.log`、`test-counts.json` |
@@ -43,9 +44,9 @@
 | **check-wave-sync** | `check-wave-sync.ps1` / `.sh` | Phase 3 / 7 | Wave 表一致性 | `--plan-dir`、可选 `--tdd-path` | `WAVE_SYNC: pass/block` |
 | **check-tasks-sync** | `check-tasks-sync.ps1` / `.sh` | Phase 3 收尾 | tasks 勾选状态 | `--change-name`、可选 `--plan-dir` | `TASKS_SYNC: pass/block` |
 | **update-proposal-links** | `update-proposal-links.ps1` / `.sh` | Phase 7 归档后 | 更新 archive 链接 | `--plan-dir`、`--change-name`、`--archive-date` | `LINKS_UPDATED: N` |
-| **worktree-create** | `worktree-create.ps1` / `.sh` | Phase 3 入口（`gate-phase3` 判定后） | 创建隔离 worktree（`git worktree add -b`）并登记；自动把 `.worktrees/` 写入 `.gitignore` | `--change-name`、`--kind feature\|fix`、`--base-branch`（默认当前分支） | `WORKTREE_CREATED` 行 + `RESULT: OK` |
-| **worktree-status** | `worktree-status.ps1` / `.sh` | 场景判定 / resume | 汇总 `git worktree list` 与登记表，定位未完成 change | `--json` | 每 worktree 一行 / JSON |
-| **worktree-merge-back** | `worktree-merge-back.ps1` / `.sh` | Phase 7 后 | rebase → merge 回源分支 → worktree remove → 更新登记表 | `--change-name`、`--kind`、`--base-branch`、`--keep-branch`、`--ff`、`--no-rebase`、`--dry-run` | 每步 `STEP` / `RESULT: OK` |
+| **worktree-create** | `worktree-create.ps1` / `.sh` | Phase 3 入口（`gate-phase3` 判定后） | 创建隔离 worktree（`git worktree add -b`）并登记（含仓库根）；自动把 `.worktrees/` 写入 `.gitignore` | `--change-name`、`--kind feature\|fix`、`--base-branch`（默认当前分支）、可选 `--repo` | `WORKTREE_CREATED` 行 + `RESULT: OK` |
+| **worktree-status** | `worktree-status.ps1` / `.sh` | 场景判定 / resume | 汇总 `git worktree list` 与登记表，定位未完成 change | `--json`、可选 `--repo` | 每 worktree 一行 / JSON |
+| **worktree-merge-back** | `worktree-merge-back.ps1` / `.sh` | Phase 7 后 | rebase → merge 回源分支 → worktree remove → 更新登记表 | `--change-name`、`--kind`、`--base-branch`、可选 `--repo`、`--keep-branch`、`--ff`、`--no-rebase`、`--dry-run` | 每步 `STEP` / `RESULT: OK` |
 
 ## 常用命令
 
@@ -73,7 +74,7 @@ bash <skill_root>/scripts/run-lint.sh dev-plan/.../
 - **preflight** 为 SKILL §1.1 步骤 1 的唯一首调用：先查 `.dev-lifecycle/.preflight-last-run`（仅门禁通过时写入），距今 ≤ 7 天（`--max-age-days` / `DEVLC_GATE_MAX_AGE_DAYS` 可覆盖）→ `gate-cache: valid` 直接退出，本会话跳过全量门禁；超期 / 缺失 / 不可解析 → 自动全量执行，通过后刷新时间戳（并按 §2.1 重新校验 project-config）。`--force` 或删除该标记可强制重跑。
 - **preflight** 亦可替换为单独跑 `check-env` + `restore-rules` + `ensure-openspec`（但无缓存、不刷新通过时间戳，不推荐）。
 - **worktree 隔离**：`worktree-create` / `worktree-status` / `worktree-merge-back` 三件套配合使用。
-  - 隔离决策点：Phase 3 入口 `gate-phase3`（AskUserQuestion 是否用 worktree + 源分支默认当前分支；用则 `worktree-create`）。
+  - 隔离决策点：Phase 3 入口，读 project-config 仓库类型（`detect-repos` 初始化记录）→ 确定受影响仓库 → **必问用户**（非 git → 单工作树 / 先 `git init`；多仓库 → 只对受影响仓库；single → 是否用 worktree + 源分支默认当前分支，用则 `worktree-create --repo`）；`gate-phase3` 只做状态查询。
   - 分支名 `{feature|fix}-<change-name>`，worktree 落在 `.worktrees/<branch>`；`worktree-create` 会自动把 `.worktrees/` 追加进 `.gitignore`。
   - 交付点：Phase 7 完成 archive + 验收后，`worktree-merge-back` 依次 rebase（到源分支最新）→ merge（默认 `--no-ff`）→ worktree remove → 删分支 → 登记表 `status=merged`。**冲突一律停下交用户，不自动 resolve。**
   - 登记表：`.dev-lifecycle/worktrees.tsv`（TSV，8 列）；resume 时用 `worktree-status` 定位「未完成的 change 在哪个 worktree」。

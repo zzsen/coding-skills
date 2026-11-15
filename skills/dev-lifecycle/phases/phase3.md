@@ -7,25 +7,21 @@
 >
 > **禁止**：Phase 3 入口直接 `/opsx:apply` 或 `openspec-apply-change` 代替 Wave TDD（`openspec-apply-change` Skill 写「开始实现」时，dev-lifecycle **仍以本节为准**）。
 >
-> **worktree（git 必做）**：见 **§〇 硬门禁**——进入 Phase 3 前先跑 `gate-phase3` 确定 worktree 隔离方式并记录上下文；启用 worktree 时，本节所有源码/测试/文档的 Edit/Write、测试/lint/构建，一律在 worktree 路径 `<git-root>/.worktrees/<branch>` 内进行；`3.dev.md` 报告仍写主工作树 `<plan-dir>/`。非 git 项目跳过，在主工作树按 change 目录隔离。
+> **worktree（git 必做）**：见 **§〇 硬门禁**——进入 Phase 3 前先跑 `gate-phase3` 确定 worktree 隔离方式并记录上下文；启用 worktree 时，本节所有源码/测试/文档的 Edit/Write、测试/lint/构建，一律在 worktree 路径 `<git-root>/.worktrees/<branch>` 内进行；`3.dev.md` 报告仍写主工作树 `<plan-dir>/`。非 git 项目须 AskUserQuestion 确认单工作树。
 
 ---
 
-## 〇、硬门禁：worktree 隔离决策（进入 Phase 3 前，git 必做）
+## 〇、硬门禁：worktree 隔离决策（进入 Phase 3 前，必做）
 
-> **非 git 项目跳过本节**（单工作树，按 change 目录隔离）。本节是 Phase 3 的**首个动作**，未完成不得进入 §一。
+> 仓库类型已在 project-config 初始化时由 `detect-repos` 探测并记录（§1「仓库类型」「仓库列表」）。本节据此决定 worktree 隔离，**必须 AskUserQuestion 与用户确认，不得静默跳过**。
 
-1. 运行 `gate-phase3 --change-name <name>`，按输出分支：
-   - **`GATE_PHASE3: pass` + `worktree: true`** → 记下 `target_branch` / `base_branch` / `worktree_path`，写入 `3.dev.md`「Worktree 隔离上下文」（见 §四），进入 §一。
-   - **`GATE_PHASE3: pass` + `worktree: false`**（非 git）→ 写入 `3.dev.md`「worktree: 否」，进入 §一。
-   - **`GATE_PHASE3: block`** → 继续步骤 2。
-2. **AskUserQuestion**：
-   - 问题：「进入开发前，是否使用 worktree 隔离？（一个 change = 一个分支 + 一个独立目录，主工作树留在源分支，便于并行开发）」
-   - 选项：✅ 使用 worktree（推荐）/ ❌ 不用，直接在当前分支开发
-   - 选「使用 worktree」→ 再 AskUserQuestion 确认源分支（**默认当前分支**，列出当前分支名）。
-3. 「使用 worktree」→ `worktree-create --change-name <name> --kind feature|fix --base-branch <源分支>` → 重跑 `gate-phase3` 直至 `pass`。
-4. 「不用 worktree」→ 直接在当前（源）分支开发，`3.dev.md` 记录「worktree: 否」。
-5. **无论哪种选择**，把最终决策写入 `3.dev.md`「Worktree 隔离上下文」（是否 worktree + `base_branch` + `target_branch`），供后续 agent 续做时定位代码位置。
+1. 读 `project-config.md` §1「仓库类型」「仓库列表」；结合本 change 的 openspec changes / `tasks.md` / `2.plan.md` 变更路径与「服务映射表 / 仓库列表」，确定**受影响的仓库**（`affected_repos`）。
+2. 按仓库类型分支：
+   - **none**（非 git）→ AskUserQuestion：「当前项目不是 git 仓库，无法 worktree。① 初始化 git 后 worktree；② 直接单工作树开发（记录 worktree: 否）」。
+   - **single** → 对该唯一仓库，AskUserQuestion「是否使用 worktree 隔离？」；选「是」再确认源分支（默认该仓库当前分支）。
+   - **multi** → 对 `affected_repos` 中每个仓库，AskUserQuestion「是否对 `<repo>` 使用 worktree？」（**未受影响的仓库不建 worktree**）。
+3. 每个「用 worktree」的仓库 → `worktree-create --change-name <name> --kind feature|fix --base-branch <源分支> --repo <仓库根>`；再跑 `gate-phase3 --change-name <name> --repo <仓库根>` 确认（block 则回到步骤 2）。
+4. **把决策写入 `3.dev.md`「Worktree 隔离上下文」**：是否 worktree + 每个受影响仓库的 `repo` / `base_branch` / `target_branch` / worktree 绝对路径。
 
 **铁律**：主工作树**禁止** checkout/switch 到 change 分支；**禁止** `git checkout -b` / `git switch -c` 为 change 建分支——建分支一律走 `worktree-create`（选「使用 worktree」时）。
 
@@ -95,7 +91,7 @@ apply 期间：每项完成后跑相关测试，禁止扩大范围。
 
 ## 四、3.dev.md 要求
 
-结构见 [03-dev.md](../templates/03-dev.md)（**结构示例**）。头部须含「Worktree 隔离上下文」（来自 `gate-phase3` 输出 / 用户选择：是否 worktree、`base_branch`、`target_branch`、worktree 路径），供续做 agent 定位代码位置。每轮/Wave 追加：
+结构见 [03-dev.md](../templates/03-dev.md)（**结构示例**）。头部须含「Worktree 隔离上下文」——**每个受影响仓库一行**（是否 worktree + 仓库目录 + 源分支 base + 目标分支 target + worktree 路径；single 仓库一行、multi 逐仓库填），供续做 agent 定位代码位置。每轮/Wave 追加：
 
 - Wave 编号与 Task 范围
 - 开始/完成时间（Shell）

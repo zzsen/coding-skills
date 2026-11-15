@@ -14,13 +14,12 @@
 ## Worktree 隔离上下文
 
 > 进入 Phase 3 时的隔离决策，来自 `gate-phase3` 输出与用户选择；供续做 agent 定位代码位置。
+> **每个受影响仓库一行**：single 仓库填一行；多仓库逐仓库填；非 git 时「是否 worktree」= 否、目录填项目根。
 
-| 项 | 值 |
-|----|----|
-| 是否使用 worktree | 是 / 否 |
-| 源分支 base_branch | `main`（默认当前分支，或用户指定） |
-| 目标分支 target_branch | `feature-<change-name>`（worktree=是时） |
-| worktree 路径 | `<git-root>/.worktrees/<branch>`（worktree=是时） |
+| 仓库 | 是否 worktree | 仓库目录 | 源分支 base | 目标分支 target | worktree 路径 |
+|------|--------------|---------|------------|----------------|--------------|
+| `backend`（仓库名） | 是 / 否 | `/a/b` | `main` | `feature-<change-name>` | `/a/b/.worktrees/feature-<change-name>` |
+| `frontend`（仓库名） | 是 / 否 | `/a/c` | `main` | `feature-<change-name>` | `/a/c/.worktrees/feature-<change-name>` |
 
 ## 开发轮次
 
