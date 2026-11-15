@@ -8,7 +8,8 @@
 # 【用法】& <skill_root>/scripts/worktree-status.ps1 [-Json]
 # =============================================================================
 param(
-  [switch]$Json
+  [switch]$Json,
+  [string]$Repo = ''
 )
 
 . (Join-Path $PSScriptRoot '_init-ps.ps1')
@@ -16,12 +17,17 @@ Initialize-DevLifecycleConsole
 . (Join-Path $PSScriptRoot '_agent-lib.ps1')
 . (Join-Path $PSScriptRoot '_worktree-lib.ps1')
 
-$gitRoot = Get-DlcWtGitRoot
-if (-not $gitRoot) { Write-Error "RESULT: FAIL（当前目录不是 git 仓库）"; exit 1 }
+if ($Repo) {
+  $gitRoot = Get-DlcWtRepoRoot -Target $Repo
+  if (-not $gitRoot) { Write-Error "RESULT: FAIL（-Repo 不是 git 仓库: $Repo）"; exit 1 }
+} else {
+  $gitRoot = Get-DlcWtGitRoot
+  if (-not $gitRoot) { Write-Error "RESULT: FAIL（当前目录不是 git 仓库，请 cd 到仓库根或用 -Repo 指定）"; exit 1 }
+}
 
 # 登记表索引：branch -> change_name|kind|base_branch|status
 $reg = @{}
-$registry = Get-DlcWtRegistry
+$registry = Get-DlcWtRegistry -GitRoot $gitRoot
 if (Test-Path -LiteralPath $registry -PathType Leaf) {
   foreach ($ln in (Get-Content -LiteralPath $registry)) {
     $f = $ln -split "`t"

@@ -8,6 +8,7 @@
 # 【调用阶段】Phase 7 完成 /opsx:archive 与验收之后。
 # 【输入】--change-name <name>（必需）--kind feature|fix（必需）
 #         --base-branch <branch>（可选，默认取自登记表；取不到则必需）
+#         --repo <path>（可选，显式指定 git 仓库根，多仓库场景用）
 #         --keep-branch（可选，merge 后保留分支，默认删除）
 #         --no-ff（默认 merge 用 --no-ff；不加则允许 fast-forward）
 #         --no-rebase（默认 rebase；跳过用此标志）
@@ -28,6 +29,7 @@ source "$SCRIPT_DIR/_worktree-lib.sh"
 CHANGE_NAME=""
 KIND=""
 BASE_BRANCH=""
+REPO=""
 KEEP_BRANCH=false
 NO_FF=true
 REBASE=true
@@ -41,12 +43,14 @@ while [ $# -gt 0 ]; do
     --kind=*)        KIND="${1#*=}" ;;
     --base-branch)   BASE_BRANCH="$2"; shift ;;
     --base-branch=*) BASE_BRANCH="${1#*=}" ;;
+    --repo)          REPO="$2"; shift ;;
+    --repo=*)        REPO="${1#*=}" ;;
     --keep-branch)   KEEP_BRANCH=true ;;
     --no-ff)         NO_FF=true ;;
     --ff)            NO_FF=false ;;
     --no-rebase)     REBASE=false ;;
     --dry-run)       DRY_RUN=true ;;
-    -h|--help) echo "用法: $0 --change-name <name> --kind feature|fix [--base-branch <branch>] [--keep-branch] [--ff] [--no-rebase] [--dry-run]"; exit 0 ;;
+    -h|--help) echo "用法: $0 --change-name <name> --kind feature|fix [--base-branch <branch>] [--repo <git-root>] [--keep-branch] [--ff] [--no-rebase] [--dry-run]"; exit 0 ;;
     *) echo "未知参数: $1" >&2; exit 2 ;;
   esac
   shift
@@ -57,13 +61,17 @@ if [ "$KIND" != "feature" ] && [ "$KIND" != "fix" ]; then
   echo "RESULT: FAIL（--kind 须为 feature 或 fix）" >&2; exit 2
 fi
 
-GIT_ROOT="$(dlc_wt_git_root)" || { echo "RESULT: FAIL（当前目录不是 git 仓库）" >&2; exit 1; }
+if [ -n "$REPO" ]; then
+  GIT_ROOT="$(dlc_wt_repo_root "$REPO")" || { echo "RESULT: FAIL（--repo 不是 git 仓库: $REPO）" >&2; exit 1; }
+else
+  GIT_ROOT="$(dlc_wt_git_root)" || { echo "RESULT: FAIL（当前目录不是 git 仓库，请 cd 到仓库根或用 --repo 指定）" >&2; exit 1; }
+fi
 
 BRANCH="$(dlc_wt_branch "$KIND" "$CHANGE_NAME")"
 WT_PATH="$GIT_ROOT/$(dlc_wt_path "$BRANCH")"
 
 # 从登记表补 base_branch
-REGISTRY="$(dlc_wt_registry)"
+REGISTRY="$(dlc_wt_registry "$GIT_ROOT")"
 if [ -z "$BASE_BRANCH" ] && [ -f "$REGISTRY" ]; then
   BASE_BRANCH="$(awk -F'\t' -v b="$BRANCH" '$3==b{print $5; exit}' "$REGISTRY")"
 fi
@@ -154,7 +162,7 @@ fi
 
 # ── 更新登记表 ──────────────────────────────────────────────────────────────
 if [ -f "$REGISTRY" ]; then
-  dlc_wt_registry_set_status "$BRANCH" "merged" \
+  dlc_wt_registry_set_status "$BRANCH" "merged" "$GIT_ROOT" \
     && echo "STEP 登记表: status=merged" \
     || echo "WARN: 登记表无该分支记录，跳过状态更新"
 fi

@@ -5,7 +5,7 @@
 # 【功能】汇总 git worktree list（git 权威）与登记表 .dev-lifecycle/worktrees.tsv，
 #         输出每个 worktree 的分支、路径、HEAD、change-name、kind、base_branch、状态。
 # 【调用阶段】场景判定 / resume：定位「未完成的 change 在哪个 worktree」。
-# 【输入】--json 可选。
+# 【输入】--json 可选；--repo <path> 可选（多仓库场景指定 git 仓库根）。
 # 【输出】stdout：可读列表（每 worktree 一行）或 JSON 数组；exit 0（非仓库 exit 1）。
 # 【流程】校验仓库 → git worktree list --porcelain → 逐 worktree 查登记表 → 输出。
 # 【用法】bash <skill_root>/scripts/worktree-status.sh [--json]
@@ -20,15 +20,23 @@ source "$SCRIPT_DIR/_agent-lib.sh"
 source "$SCRIPT_DIR/_worktree-lib.sh"
 
 JSON=false
-for arg in "$@"; do
-  case "$arg" in
+REPO=""
+while [ $# -gt 0 ]; do
+  case "$1" in
     --json) JSON=true ;;
-    -h|--help) echo "用法: $0 [--json]"; exit 0 ;;
+    --repo) REPO="$2"; shift ;;
+    --repo=*) REPO="${1#*=}" ;;
+    -h|--help) echo "用法: $0 [--json] [--repo <git-root>]"; exit 0 ;;
   esac
+  shift
 done
 
-GIT_ROOT="$(dlc_wt_git_root)" || { echo "RESULT: FAIL（当前目录不是 git 仓库）" >&2; exit 1; }
-REGISTRY="$(dlc_wt_registry)"
+if [ -n "$REPO" ]; then
+  GIT_ROOT="$(dlc_wt_repo_root "$REPO")" || { echo "RESULT: FAIL（--repo 不是 git 仓库: $REPO）" >&2; exit 1; }
+else
+  GIT_ROOT="$(dlc_wt_git_root)" || { echo "RESULT: FAIL（当前目录不是 git 仓库，请 cd 到仓库根或用 --repo 指定）" >&2; exit 1; }
+fi
+REGISTRY="$(dlc_wt_registry "$GIT_ROOT")"
 
 # 查登记表：$1=branch，输出 change_name|kind|base_branch|status（无记录输出空）
 reg_lookup() {

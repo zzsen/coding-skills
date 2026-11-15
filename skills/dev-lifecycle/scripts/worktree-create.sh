@@ -11,6 +11,7 @@
 # 【输入】--change-name <name>（必需，kebab-case）
 #         --kind feature|fix（必需，按需求类型判定）
 #         --base-branch <branch>（可选，默认当前分支）
+#         --repo <path>（可选，显式指定 git 仓库根，多仓库场景用）
 #         --worktrees-root <dir>（可选，默认 .worktrees / DEVLC_WORKTREES_ROOT）
 # 【输出】stdout：WORKTREE_CREATED: branch=... path=... base=... base_commit=...；
 #         登记表追加一行。exit 0 成功；非 0 失败（非仓库 / 参数缺失 / 分支或路径已存在）。
@@ -29,6 +30,7 @@ source "$SCRIPT_DIR/_worktree-lib.sh"
 CHANGE_NAME=""
 KIND=""
 BASE_BRANCH=""
+REPO=""
 WORKTREES_ROOT="$(dlc_wt_root)"
 
 while [ $# -gt 0 ]; do
@@ -39,9 +41,11 @@ while [ $# -gt 0 ]; do
     --kind=*)           KIND="${1#*=}" ;;
     --base-branch)      BASE_BRANCH="$2"; shift ;;
     --base-branch=*)    BASE_BRANCH="${1#*=}" ;;
+    --repo)             REPO="$2"; shift ;;
+    --repo=*)           REPO="${1#*=}" ;;
     --worktrees-root)   WORKTREES_ROOT="$2"; shift ;;
     --worktrees-root=*) WORKTREES_ROOT="${1#*=}" ;;
-    -h|--help) echo "用法: $0 --change-name <name> --kind feature|fix [--base-branch <branch>]"; exit 0 ;;
+    -h|--help) echo "用法: $0 --change-name <name> --kind feature|fix [--base-branch <branch>] [--repo <git-root>]"; exit 0 ;;
     *) echo "未知参数: $1" >&2; exit 2 ;;
   esac
   shift
@@ -52,7 +56,11 @@ if [ "$KIND" != "feature" ] && [ "$KIND" != "fix" ]; then
   echo "RESULT: FAIL（--kind 须为 feature 或 fix）" >&2; exit 2
 fi
 
-GIT_ROOT="$(dlc_wt_git_root)" || { echo "RESULT: FAIL（当前目录不是 git 仓库）" >&2; exit 1; }
+if [ -n "$REPO" ]; then
+  GIT_ROOT="$(dlc_wt_repo_root "$REPO")" || { echo "RESULT: FAIL（--repo 不是 git 仓库: $REPO）" >&2; exit 1; }
+else
+  GIT_ROOT="$(dlc_wt_git_root)" || { echo "RESULT: FAIL（当前目录不是 git 仓库）" >&2; exit 1; }
+fi
 
 # 源分支：默认当前分支
 if [ -z "$BASE_BRANCH" ]; then
@@ -86,11 +94,11 @@ else
 fi
 
 # 登记
-REGISTRY="$(dlc_wt_registry)"
+REGISTRY="$(dlc_wt_registry "$GIT_ROOT")"
 mkdir -p "$(dirname "$REGISTRY")"
 CREATED_AT="$(date +"%Y-%m-%d %H:%M:%S")"
-printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-  "$CHANGE_NAME" "$KIND" "$BRANCH" "$WT_REL" "$BASE_BRANCH" "$BASE_COMMIT" "$CREATED_AT" "active" \
+printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  "$CHANGE_NAME" "$KIND" "$BRANCH" "$WT_REL" "$BASE_BRANCH" "$BASE_COMMIT" "$CREATED_AT" "active" "$GIT_ROOT" \
   >> "$REGISTRY"
 
 echo "WORKTREE_CREATED: branch=$BRANCH path=$WT_PATH base=$BASE_BRANCH base_commit=$BASE_COMMIT"

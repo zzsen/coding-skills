@@ -6,7 +6,8 @@
 #         **冲突一律停下交用户，不自动 resolve。**
 # 【调用阶段】Phase 7 完成 /opsx:archive 与验收之后。
 # 【输入】-ChangeName <name>（必填） -Kind feature|fix（必填）
-#         -BaseBranch <branch>（可选） -KeepBranch（可选） -Ff（fast-forward，默认 --no-ff）
+#         -BaseBranch <branch>（可选） -Repo <path>（可选，多仓库场景指定仓库根）
+#         -KeepBranch（可选） -Ff（fast-forward，默认 --no-ff）
 #         -NoRebase（可选） -DryRun（可选）
 # 【输出】stdout：每步 STEP/RESULT；exit 0 成功，非 0 失败。
 # 【用法】& <skill_root>/scripts/worktree-merge-back.ps1 -ChangeName user-management -Kind feature
@@ -18,6 +19,7 @@ param(
   [ValidateSet('feature', 'fix')]
   [string]$Kind,
   [string]$BaseBranch = '',
+  [string]$Repo = '',
   [switch]$KeepBranch,
   [switch]$Ff,
   [switch]$NoRebase,
@@ -29,13 +31,18 @@ Initialize-DevLifecycleConsole
 . (Join-Path $PSScriptRoot '_agent-lib.ps1')
 . (Join-Path $PSScriptRoot '_worktree-lib.ps1')
 
-$gitRoot = Get-DlcWtGitRoot
-if (-not $gitRoot) { Write-Error "RESULT: FAIL（当前目录不是 git 仓库）"; exit 1 }
+if ($Repo) {
+  $gitRoot = Get-DlcWtRepoRoot -Target $Repo
+  if (-not $gitRoot) { Write-Error "RESULT: FAIL（-Repo 不是 git 仓库: $Repo）"; exit 1 }
+} else {
+  $gitRoot = Get-DlcWtGitRoot
+  if (-not $gitRoot) { Write-Error "RESULT: FAIL（当前目录不是 git 仓库，请 cd 到仓库根或用 -Repo 指定）"; exit 1 }
+}
 
 $branch = Get-DlcWtBranch -Kind $Kind -ChangeName $ChangeName
 $wtPath = Join-Path $gitRoot (Get-DlcWtPath -Branch $branch)
 
-$registry = Get-DlcWtRegistry
+$registry = Get-DlcWtRegistry -GitRoot $gitRoot
 if (-not $BaseBranch -and (Test-Path -LiteralPath $registry -PathType Leaf)) {
   foreach ($ln in (Get-Content -LiteralPath $registry)) {
     $f = $ln -split "`t"
@@ -125,7 +132,7 @@ if (-not $KeepBranch) {
 
 # 更新登记表
 if (Test-Path -LiteralPath $registry -PathType Leaf) {
-  if (Set-DlcWtRegistryStatus -Branch $branch -Status 'merged') {
+  if (Set-DlcWtRegistryStatus -Branch $branch -Status 'merged' -GitRoot $gitRoot) {
     Write-Output "STEP 登记表: status=merged"
   } else {
     Write-Output "WARN: 登记表无该分支记录，跳过状态更新"
